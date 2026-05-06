@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      /* 基本スタイルは以前のダークモードを継承 */
+      body { font-family: sans-serif; padding: 20px; background-color: #121212; color: #e0e0e0; }
+      h3 { color: #90caf9; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; }
+      
+      select, textarea { 
+        width: 100%; margin-bottom: 20px; padding: 12px; border-radius: 12px; 
+        font-size: 16px; box-sizing: border-box; background-color: #1e1e1e; 
+        color: #e0e0e0; border: 1px solid #333; 
+      }
+      textarea { height: 180px; border: 2px solid #333; }
+      
+      /* 全件取得ボタン（少し控えめなデザイン） */
+      .load-all-btn {
+        width: 100%;
+        background-color: #444;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+        margin-top: -10px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      
+      .save-btn { 
+        width: 100%; height: 60px; background-color: #4caf50; color: white; 
+        border: none; border-radius: 12px; font-weight: bold; font-size: 18px; 
+      }
+      .save-btn:active { transform: translateY(2px); background-color: #388e3c; }
+      .save-btn:disabled { background-color: #555; color: #aaa; }
+    </style>
+  </head>
+  <body>
+
+    <h3>📂 追記先のドキュメント</h3>
+    <select id="docSelect">
+      <option value="">読み込み中...</option>
+    </select>
+    <button id="loadBtn" class="load-all-btn" onclick="fetchAllDocs()">すべてのドキュメントを表示</button>
+
+    <h3>📝 入力内容</h3>
+    <textarea id="output" placeholder="入力してください..."></textarea>
+
+    <button class="save-btn" onclick="submitText()">📄 文書の先頭に保存</button>
+
+    <script>
+      // リストを更新する共通関数
+      function updateDocList(docs) {
+        const select = document.getElementById('docSelect');
+        const loadBtn = document.getElementById('loadBtn');
+        select.innerHTML = '';
+        if (!docs || docs.length === 0) {
+          select.innerHTML = '<option value="">ドキュメントが見つかりません</option>';
+          return;
+        }
+        docs.forEach(doc => {
+          let opt = document.createElement('option');
+          opt.value = doc.id;
+          opt.innerHTML = doc.name;
+          select.appendChild(opt);
+        });
+      }
+
+      // 起動時は最近の5件だけ取得
+      window.onload = () => {
+        google.script.run.withSuccessHandler(updateDocList).getRecentDocs();
+      };
+
+      // ボタンが押されたら全件取得
+      function fetchAllDocs() {
+        const loadBtn = document.getElementById('loadBtn');
+        const select = document.getElementById('docSelect');
+        loadBtn.innerHTML = "読み込み中...";
+        loadBtn.disabled = true;
+        select.innerHTML = '<option value="">全件リストを取得中...</option>';
+        
+        google.script.run.withSuccessHandler(docs => {
+          updateDocList(docs);
+          loadBtn.style.display = 'none'; // 取得後はボタンを非表示にする
+        }).getAllDocs();
+      }
+
+      function submitText() {
+        const id = document.getElementById('docSelect').value;
+        const text = document.getElementById('output').value;
+        const btn = document.querySelector('.save-btn');
+
+        if (!id || !text) { alert("項目を入力してください"); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = "保存中...";
+
+        google.script.run.withSuccessHandler(msg => {
+          alert(msg);
+          document.getElementById('output').value = ''; 
+          btn.disabled = false;
+          btn.innerHTML = "📄 文書の先頭に保存";
+        }).addTextToTop(id, text);
+      }
+    </script>
+  </body>
+</html>
