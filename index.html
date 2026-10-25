@@ -28,7 +28,12 @@
         cursor: pointer;
       }
       
-      .save-btn { 
+      .reg-box { margin-bottom: 20px; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 12px; }
+      .reg-box summary { cursor: pointer; color: #90caf9; }
+      .hint { font-size: 13px; line-height: 1.6; color: #bbb; }
+      input[type=text] { width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #121212; color: #e0e0e0; border: 1px solid #333; }
+
+      .save-btn {
         width: 100%; height: 60px; background-color: #4caf50; color: white; 
         border: none; border-radius: 12px; font-weight: bold; font-size: 18px; 
       }
@@ -42,7 +47,20 @@
     <select id="docSelect">
       <option value="">読み込み中...</option>
     </select>
-    <button id="loadBtn" class="load-all-btn" onclick="fetchAllDocs()">すべてのドキュメントを表示</button>
+    <button class="load-all-btn" onclick="removeSelected()">選択中のドキュメントの登録を解除</button>
+
+    <details id="regBox" class="reg-box">
+      <summary>➕ ドキュメントを登録する</summary>
+      <p class="hint">
+        【使い方】<br>
+        1. 追記したいGoogleドキュメントを開く<br>
+        2. ブラウザのアドレスバーのURL（https://docs.google.com/document/d/…）をコピー<br>
+        3. 下の欄に貼り付けて「登録」を押す<br>
+        ※ URLの代わりにID（/d/ と /edit の間の文字列）だけでもOKです。
+      </p>
+      <input id="regInput" type="text" placeholder="ドキュメントのURLまたはIDを貼り付け">
+      <button class="load-all-btn" style="margin-top:0" onclick="register()">登録</button>
+    </details>
 
     <h3>📝 入力内容</h3>
     <textarea id="output" placeholder="入力してください..."></textarea>
@@ -67,23 +85,27 @@
         });
       }
 
-      // 起動時は最近の5件だけ取得
+      // 起動時は登録済みドキュメントを表示
       window.onload = () => {
-        google.script.run.withSuccessHandler(updateDocList).getRecentDocs();
-      };
-
-      // ボタンが押されたら全件取得
-      function fetchAllDocs() {
-        const loadBtn = document.getElementById('loadBtn');
-        const select = document.getElementById('docSelect');
-        loadBtn.innerHTML = "読み込み中...";
-        loadBtn.disabled = true;
-        select.innerHTML = '<option value="">全件リストを取得中...</option>';
-        
         google.script.run.withSuccessHandler(docs => {
           updateDocList(docs);
-          loadBtn.style.display = 'none'; // 取得後はボタンを非表示にする
-        }).getAllDocs();
+          if (!docs || docs.length === 0) document.getElementById('regBox').open = true;
+        }).getRegisteredDocs();
+      };
+
+      function register() {
+        const input = document.getElementById('regInput');
+        if (!input.value.trim()) { alert("URLまたはIDを入力してください"); return; }
+        google.script.run.withSuccessHandler(res => {
+          alert(res.message);
+          if (res.ok) { updateDocList(res.docs); input.value = ''; }
+        }).registerDoc(input.value);
+      }
+
+      function removeSelected() {
+        const id = document.getElementById('docSelect').value;
+        if (!id || !confirm("選択中のドキュメントの登録を解除しますか？（ドキュメント自体は消えません）")) return;
+        google.script.run.withSuccessHandler(updateDocList).removeDoc(id);
       }
 
       function submitText() {

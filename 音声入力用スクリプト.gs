@@ -9,37 +9,38 @@ function doGet() {
 }
 
 /**
- * 初期表示用：最近使った5件を取得する
+ * 登録済みドキュメント一覧を取得する（DriveAppは使わない）
  */
-function getRecentDocs() {
-  const files = DriveApp.getFilesByType(MimeType.GOOGLE_DOCS);
-  let docList = [];
-  let count = 0;
-  while (files.hasNext() && count < 5) {
-    let file = files.next();
-    if (!file.isTrashed()) {
-      docList.push({id: file.getId(), name: file.getName()});
-      count++;
-    }
-  }
-  return docList;
+function getRegisteredDocs() {
+  const json = PropertiesService.getUserProperties().getProperty('docs');
+  return json ? JSON.parse(json) : [];
 }
 
 /**
- * 全件取得用：すべてのGoogleドキュメントを取得する
+ * URLまたはIDからドキュメントを登録する
  */
-function getAllDocs() {
-  const files = DriveApp.getFilesByType(MimeType.GOOGLE_DOCS);
-  let docList = [];
-  while (files.hasNext()) {
-    let file = files.next();
-    if (!file.isTrashed()) {
-      docList.push({id: file.getId(), name: file.getName()});
-    }
+function registerDoc(urlOrId) {
+  const m = String(urlOrId || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const id = m ? m[1] : String(urlOrId || '').trim();
+  if (!id) return {ok: false, message: 'URLまたはIDを入力してください。'};
+  try {
+    const name = DocumentApp.openById(id).getName();
+    const docs = getRegisteredDocs().filter(d => d.id !== id);
+    docs.unshift({id: id, name: name});
+    PropertiesService.getUserProperties().setProperty('docs', JSON.stringify(docs));
+    return {ok: true, message: '✅ 登録しました: ' + name, docs: docs};
+  } catch (e) {
+    return {ok: false, message: '❌ 開けませんでした: ' + e.message};
   }
-  // 名前順に並び替え
-  docList.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  return docList;
+}
+
+/**
+ * 登録を解除する
+ */
+function removeDoc(id) {
+  const docs = getRegisteredDocs().filter(d => d.id !== id);
+  PropertiesService.getUserProperties().setProperty('docs', JSON.stringify(docs));
+  return docs;
 }
 
 /**
